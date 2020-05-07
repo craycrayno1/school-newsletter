@@ -14,10 +14,16 @@ import Foundation
 // Garbage Collection : GC
 // Automatic Reference Counting : ARC
 
-class NoticeViewModel {
+class NoticeViewModel: ObservableObject {
+    @Published var events: [Event] = []
+    
+    func getSchedule() {}
+}
+
+final class NetworkNoticeViewModel: NoticeViewModel {
     var cancellable: Cancellable?
     
-    func getSchedule() {
+    override func getSchedule() {
         var urlComponents = URLComponents()
         urlComponents.scheme = "https"
         urlComponents.host = "open.neis.go.kr"
@@ -29,19 +35,36 @@ class NoticeViewModel {
             "sd_schul_code": "7091444",
             "atpt_ofcdc_sc_code": "B10",
             "aa_from_ymd": "20200415",
-            "psize": "3"
+            "psize": "100"
         ]
         urlComponents.queryItems = parameters.map { URLQueryItem(name: $0, value: $1) }
+        let url = urlComponents.url!
         
         cancellable = URLSession.shared
-            .dataTaskPublisher(for: urlComponents.url!)
+            .dataTaskPublisher(for: url)
             .map { $0.data }
             .decode(type: ScheduleWrapper.self, decoder: JSONDecoder())
             .map { $0.schedule.events }
             .retry(1)
-
             .replaceError(with: [])
-            .sink { print($0) }
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.events, on: self)
+    }
+}
+
+final class StubNoticeViewModel: NoticeViewModel {
+    override init() {
+        super.init()
         
+        guard
+            let url = Bundle.main.url(
+                forResource: "sampleSchedule",
+                withExtension: "json"
+            ),
+            let data = try? Data(contentsOf: url),
+            let wrapper = try? JSONDecoder()
+                .decode(ScheduleWrapper.self, from: data)
+        else { return }
+        events = wrapper.schedule.events
     }
 }

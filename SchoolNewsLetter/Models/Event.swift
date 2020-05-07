@@ -8,12 +8,26 @@
 
 import Foundation
 
-struct Event: Decodable {
+struct Event: Decodable, Hashable {
     var rawDate: String
     var title: String
     var firstGrade: Bool
     var secondGrade: Bool
     var thirdGrade: Bool
+    
+    var dateRepresentation: String? {
+        guard let date = Calendar.current.date(from: rawDate) else {
+            return nil
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .long
+        dateFormatter.timeStyle = .none
+        dateFormatter.locale = .current
+        
+        return dateFormatter.string(from: date)
+        
+    }
 
     enum CodingKeys: String, CodingKey {
         case rawDate = "AA_YMD"
